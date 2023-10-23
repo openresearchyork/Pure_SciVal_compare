@@ -1,0 +1,105 @@
+###########################################################
+#####  WRITTEN BY PAULA SCHIRRMACHER (CC-BY)   ############
+#####  RESEARCH INTELLIGENCE ANALYST           ############
+#####  OPEN RESEARCH TEAM, UNIVERSITY OF YORK  ############
+###########################################################
+
+
+#### install (temporary) and load packages ####
+
+.libPaths(c(.libPaths(), temp <- tempdir()))
+install.packages("dplyr", lib=temp, repos='http://cran.us.r-project.org')
+library(dplyr)   #for data manipulation (pipes)
+
+install.packages("stringr", lib=temp, repos='http://cran.us.r-project.org')
+library(stringr) #for string manipulation
+
+install.packages("fuzzyjoin", lib=temp, repos='http://cran.us.r-project.org')
+library(fuzzyjoin) #for fuzzy joins
+
+#### Load and prepare data ####
+
+pure.df<-read.csv("Pure.csv")
+scival.df<-read.csv("SciVal.csv",  header=T, skip=18)
+scival.df<- scival.df[1:(nrow(scival.df)-1),]#update dataframe to delete last row containing metadata
+
+
+names(pure.df)[names(pure.df) == 'DOIs..Digital.Object.Identifiers.'] <- 'DOI'
+names(scival.df)[names(scival.df) == 'Scopus.Source.title'] <- 'Journal.title'
+colnames(scival.df)
+
+scival.df$Title<-tolower(scival.df$Title)
+pure.df$Title<-tolower(pure.df$Title)
+
+scival.df$Journal.title<-tolower(scival.df$Journal.title)
+pure.df$Journal.title<-tolower(pure.df$Journal.title)
+
+scival.df$DOI<-tolower(scival.df$DOI)
+pure.df$DOI<-tolower(pure.df$DOI)
+
+#### data wrangling ####
+
+DOIwrong<-subset(pure.df, grepl(".org/", DOI))# DOI entries containing 'https://doi.org/'
+
+pure.df$DOI<-gsub("^.*?.org/","",pure.df$DOI)#delete the 'https://doi.org/' part from DOIs
+pure.df$DOI<-gsub("doi:","",pure.df$DOI)#delete the 'doi:' part from DOIs
+pure.df$DOI<-gsub("\\|.*","",pure.df$DOI)# where there is more than 1 DOI extract only the last
+pure.df$DOI<-gsub(" ", "", pure.df$DOI)# no space in DOI
+
+scival.df$Title2<-gsub(":.*", "", scival.df$Title)#truncates title after colon (to delete subtitles that are often not included in pure entry)
+pure.df$Title2<-gsub(":.*", "", pure.df$Title)
+
+
+#### match by DOI where possible ####
+
+scivalpureDOI.df<-scival.df%>%
+  filter(DOI!="-")%>%
+  full_join(filter(pure.df, DOI!=""), by="DOI", suffix=c(".scival", ".pure"))
+
+missingfromSciVal<-scivalpureDOI.df%>%
+  filter(is.na(Title.scival))
+
+missingfromPure<-scivalpureDOI.df%>%
+  filter(is.na(Title.pure))
+
+### match by title-journal combination ####
+#(fuzzy match - some mismatch allowed)
+
+
+empty_columns <- colSums(is.na(missingfromPure) | missingfromPure == "") == nrow(missingfromPure)
+missingfromPure<-missingfromPure[, !empty_columns]%>%
+  rename_with(~str_remove(., '.scival'))%>%
+  rbind(subset(scival.df, DOI=="-")) #create new scival df with all unmatched data
+
+empty_columns <- colSums(is.na(missingfromSciVal) | missingfromSciVal == "") == nrow(missingfromSciVal)
+missingfromSciVal<-missingfromSciVal[, !empty_columns]%>%
+  rename_with(~str_remove(., '.pure'))%>%
+  rbind(subset(pure.df, DOI=="")) #create new pure df with all unmatched data
+
+#fuzzy match pure and scival data that couldn't be matched with DOI
+scivalpuretitle.df<-stringdist_full_join(missingfromPure, 
+                                         missingfromSciVal, 
+                                         by =c('Title2', 'Journal.title'), 
+                                         max_dist=5, ignore_case=TRUE)%>%
+                                          relocate(Title.y, Journal.title.y)
+
+#extract pure data that couldn't be matched by DOI or title-journal combo
+missingfromSciVal2<-scivalpuretitle.df%>%
+  filter(is.na(Title.x))
+
+#clean up dataframe
+empty_columns <- colSums(is.na(missingfromSciVal2) | missingfromSciVal2 == "") == nrow(missingfromSciVal2)
+missingfromSciVal2<-missingfromSciVal2[, !empty_columns]%>%
+  rename_with(~str_remove(., '.x'))
+
+#extract SciVal data that couldn't be matched by DOI or title-journal combo
+missingfromPure2<-scivalpuretitle.df%>%
+  filter(is.na(Title.y))
+
+#clean up dataframe
+empty_columns <- colSums(is.na(missingfromPure2) | missingfromPure2 == "") == nrow(missingfromPure2)
+missingfromPure2<-missingfromPure2[, !empty_columns]%>%
+  rename_with(~str_remove(., '.x'))
+
+#export file
+write.csv(missingfromPure2,  file="./missing_from_pure_scival.csv", row.names = FALSE)
