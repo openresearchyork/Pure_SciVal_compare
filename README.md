@@ -1,10 +1,10 @@
 ## Find potentially missing outputs from Pure
 
-Create a folder that contains two csv files (your pure data and SciVal data to compare) and the ‘compare_pure_scival.Rscript’ file (e.g. download as zip from github repo)
+Create a folder that contains two csv files (your Pure data and SciVal data to compare) and the ‘compare_pure_scival.Rscript’ file (e.g. download as zip from github repo)
 1.	Pure data is an export from new reporting module: 
--	use any filters you want to create your custom pure file
+-	use any filters you want to create your custom Pure file
 -	file must be called ‘Pure.csv’ (case sensitive)
--	must contain fields ‘Title’, 'Journal title', ‘DOIs  Digital Object Identifiers ‘, (case sensitive, these are current default pure field names)
+-	must contain fields ‘Title’, 'Journal title', ‘DOIs  Digital Object Identifiers ‘, (case sensitive, these are current default Pure field names)
 -	Fields with more than one output (e.g. DOI) should be set to ‘wide preview’ using the pipe operator (|) to separate items
 2.	SciVal data is an export of the publication list from the overview module:
 -	Choose the University of York as your entity, or else a researcher group (e.g. ‘Faculty of Social Sciences’) from 2nd entity on left panel (A)
