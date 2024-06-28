@@ -11,7 +11,7 @@ Create a folder that contains two csv files (your Pure data and SciVal data to c
 -	Switch on the home institution filter (B) (for researcher groups only)
 -	Choose time frame (customised later) (C)
 -	Choose ‘View list of Publications’ (D)
-![SciVal screenshot to show steps to download publication list](sciVal_download_data.png)
+![SciVal screenshot to show steps to download publication list](scival_download_data.png)
 -	A list of publications opens; use the left panel to customise the time frame and publication types (exactly 2 filters e.g. Years and Type must be applied or empty lines have to be added to have header on row 20, data starting row 21)
 -	choose ‘apply filter’ (bottom left)
 -	choose ‘Export spreadsheet’ (top right)
